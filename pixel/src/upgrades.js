@@ -163,15 +163,18 @@
   };
 
   /* ------------------------------------------------------------------ *
-   * XP curve — lvl1->2 = 5, then +10 per level through ~lvl20,
-   * gentler (+6/level) afterwards. Always a positive integer.
+   * XP curve — PROGRESSIVE: every level costs more than the last, and the
+   * per-level increment itself grows (quadratic term), so blitzing into the
+   * late game is impossible. Early game still ramps quickly to stay fun.
+   *   lvl1->2 = 5, lvl5 ~ 63, lvl10 ~ 207, lvl20 ~ 735,
+   *   lvl50 ~ 4.2k, lvl100 ~ 16.5k, lvl150 ~ 36.5k.
+   * (Cumulative XP to reach lvl50 ~ 75k — what previously rocketed you to
+   *  ~lvl150 now lands you around lvl50.)
    * ------------------------------------------------------------------ */
   function xpForLevel(level) {
     level = (level | 0); if (level < 1) level = 1;
-    var xp;
-    if (level === 1) xp = 5;
-    else if (level <= 20) xp = 5 + (level - 1) * 10;   // 2->15 ... 20->195
-    else xp = 195 + (level - 20) * 6;                  // gentler scaling
+    var n = level - 1;
+    var xp = 5 + n * 8 + n * n * 1.6;   // linear (brisk early) + quadratic (grindy late)
     xp = Math.round(xp);
     return xp < 1 ? 1 : xp;
   }
