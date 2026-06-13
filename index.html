@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>MEGABONK — clone</title>
+<style>
+  :root{
+    --hp:#ff4d5e; --xp:#41d1ff; --gold:#ffd23f; --ink:#0c0e1a; --panel:#161a2e;
+    --common:#9aa3b2; --uncommon:#4fd16b; --rare:#41a6ff; --epic:#c06bff; --legendary:#ffb13f;
+  }
+  *{box-sizing:border-box; margin:0; padding:0}
+  html,body{width:100%; height:100%; overflow:hidden; background:#05060d; font-family:'Trebuchet MS','Segoe UI',system-ui,sans-serif; color:#fff; user-select:none; -webkit-user-select:none}
+  #game{position:fixed; inset:0}
+  canvas{display:block}
+
+  /* ===== HUD ===== */
+  #hud{position:fixed; inset:0; pointer-events:none; z-index:10}
+  .bar{position:absolute; background:rgba(0,0,0,.45); border:2px solid rgba(255,255,255,.18); border-radius:10px; overflow:hidden; box-shadow:0 3px 10px rgba(0,0,0,.4)}
+  .bar .fill{position:absolute; inset:0; transform-origin:left center; transition:transform .12s linear}
+  .bar .label{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:13px; text-shadow:0 1px 2px #000; letter-spacing:.5px}
+
+  /* XP bar — full width top */
+  #xpbar{top:0; left:0; right:0; height:22px; border-radius:0; border-left:none; border-right:none; border-top:none}
+  #xpbar .fill{background:linear-gradient(90deg,#2aa9ff,#7ee3ff)}
+  #lvl{position:absolute; top:26px; left:50%; transform:translateX(-50%); font-size:15px; font-weight:bold; text-shadow:0 2px 3px #000; background:rgba(0,0,0,.4); padding:2px 12px; border-radius:0 0 10px 10px}
+
+  /* HP bar top-left */
+  #hpbar{top:34px; left:16px; width:240px; height:26px}
+  #hpbar .fill{background:linear-gradient(90deg,#ff2d44,#ff7a88)}
+
+  /* timer top-center */
+  #timer{position:absolute; top:60px; left:50%; transform:translateX(-50%); font-size:34px; font-weight:bold; text-shadow:0 3px 6px #000; font-variant-numeric:tabular-nums}
+
+  /* boss HP bar */
+  #bossbar{top:104px; left:50%; transform:translateX(-50%); width:min(620px,70vw); height:22px; border-color:#7a1230}
+  #bossbar .fill{background:linear-gradient(90deg,#b3122f,#ff5e7a)}
+  #bossbar .label{font-size:12px; letter-spacing:3px}
+
+  /* top-right stats */
+  #stats{position:absolute; top:34px; right:16px; text-align:right; font-size:18px; font-weight:bold; text-shadow:0 2px 3px #000; line-height:1.5}
+  #stats .gold{color:var(--gold)}
+  #stats .kills{color:#ff9a6b}
+
+  /* acquired skills panel — top-left (research: weapon/tome list top-left) */
+  #tray{position:absolute; top:70px; left:16px; display:flex; flex-direction:column; gap:5px; max-height:64vh; flex-wrap:wrap; align-content:flex-start}
+  .slot{display:flex; align-items:center; gap:8px; height:34px; min-width:172px; padding:0 8px; border-radius:9px; background:rgba(0,0,0,.55); border:2px solid rgba(255,255,255,.2)}
+  .slot .ic{font-size:21px; width:26px; text-align:center; flex:none}
+  .slot .nm{font-size:13px; font-weight:bold; white-space:nowrap; text-shadow:0 1px 2px #000}
+  .slot .pip{margin-left:auto; background:#000; border:1px solid rgba(255,255,255,.35); border-radius:6px; font-size:11px; padding:1px 7px; font-weight:bold; flex:none}
+  .slot.wpn{border-color:#ffce4d80} .slot.wpn .pip{color:#ffce4d}
+  .slot.pas{border-color:#7fb4ff66} .slot.pas .pip{color:#9ec7ff}
+
+  /* dash cooldown indicator bottom-center */
+  #dash{position:absolute; bottom:16px; left:50%; transform:translateX(-50%); width:160px; height:10px}
+  #dash .fill{background:linear-gradient(90deg,#7ee3ff,#fff)}
+
+  /* damage numbers + floating text layer */
+  #fx{position:fixed; inset:0; pointer-events:none; z-index:11; overflow:hidden}
+  .dmg{position:absolute; font-weight:bold; text-shadow:0 2px 3px #000; will-change:transform,opacity; font-size:18px}
+  .dmg.crit{font-size:26px; color:var(--gold)}
+
+  #flash{position:fixed; inset:0; background:radial-gradient(circle, transparent 40%, rgba(255,0,30,.55)); opacity:0; pointer-events:none; z-index:9; transition:opacity .12s}
+
+  /* ===== Overlays / menus ===== */
+  .overlay{position:fixed; inset:0; z-index:20; display:flex; align-items:center; justify-content:center; flex-direction:column; background:rgba(4,6,15,.82)}
+  .hidden{display:none !important}
+  .title{font-size:clamp(48px,11vw,128px); font-weight:900; letter-spacing:3px; line-height:.95; text-align:center;
+    background:linear-gradient(180deg,#ffe46b,#ff8a3d 60%,#ff3d6e); -webkit-background-clip:text; background-clip:text; color:transparent;
+    text-shadow:0 6px 0 rgba(0,0,0,.25); filter:drop-shadow(0 8px 14px rgba(0,0,0,.5))}
+  .subtitle{margin-top:6px; font-size:18px; color:#aeb6cc; letter-spacing:6px; text-transform:uppercase}
+  .btn{pointer-events:auto; cursor:pointer; margin-top:28px; padding:16px 46px; font-size:24px; font-weight:bold; color:#0c0e1a;
+    background:linear-gradient(180deg,#7ee3ff,#41a6ff); border:none; border-radius:14px; box-shadow:0 6px 0 #1d5a8c, 0 10px 20px rgba(0,0,0,.4);
+    transition:transform .06s, box-shadow .06s}
+  .btn:active{transform:translateY(4px); box-shadow:0 2px 0 #1d5a8c, 0 6px 12px rgba(0,0,0,.4)}
+  .btn.alt{background:linear-gradient(180deg,#ffd06b,#ff8a3d); box-shadow:0 6px 0 #9c4d12,0 10px 20px rgba(0,0,0,.4)}
+  .controls{margin-top:26px; color:#9aa3b2; font-size:15px; text-align:center; line-height:1.8}
+  .controls b{color:#fff}
+
+  /* character select */
+  #chars{display:flex; gap:18px; margin-top:26px; pointer-events:auto}
+  .char{width:150px; padding:16px 12px; background:var(--panel); border:3px solid rgba(255,255,255,.12); border-radius:16px; cursor:pointer; text-align:center; transition:transform .1s,border-color .1s}
+  .char:hover{transform:translateY(-4px)}
+  .char.sel{border-color:#7ee3ff; box-shadow:0 0 0 2px #7ee3ff44, 0 10px 24px rgba(0,0,0,.4)}
+  .char .em{font-size:46px}
+  .char .nm{font-weight:bold; margin-top:6px; font-size:18px}
+  .char .ds{font-size:12px; color:#9aa3b2; margin-top:4px; line-height:1.35; min-height:48px}
+
+  /* level up cards */
+  #levelup .head{font-size:40px; font-weight:900; color:#ffe46b; text-shadow:0 3px 0 rgba(0,0,0,.3); margin-bottom:6px}
+  #levelup .sub{color:#aeb6cc; margin-bottom:26px; letter-spacing:2px}
+  #cards{display:flex; gap:20px; pointer-events:auto; flex-wrap:wrap; justify-content:center; padding:0 16px}
+  .card{width:230px; min-height:300px; background:linear-gradient(180deg,#1c2240,#11152a); border:3px solid var(--common); border-radius:18px;
+    padding:22px 18px; cursor:pointer; display:flex; flex-direction:column; align-items:center; text-align:center; transition:transform .1s, box-shadow .1s; position:relative; overflow:hidden}
+  .card:hover{transform:translateY(-8px) scale(1.02)}
+  .card .key{position:absolute; top:8px; left:10px; font-size:13px; color:#7c869c; font-weight:bold}
+  .card .em{font-size:64px; margin:14px 0 10px; filter:drop-shadow(0 4px 6px rgba(0,0,0,.5))}
+  .card .nm{font-size:22px; font-weight:bold}
+  .card .rar{font-size:12px; text-transform:uppercase; letter-spacing:2px; margin:4px 0 12px; font-weight:bold}
+  .card .ds{font-size:14px; color:#c7cee0; line-height:1.5}
+  .card .tag{margin-top:auto; font-size:12px; color:#8b93a8; padding-top:12px}
+  .card.new::after{content:'NEW'; position:absolute; top:10px; right:-30px; background:#ff3d6e; color:#fff; font-size:11px; font-weight:bold; padding:3px 34px; transform:rotate(38deg)}
+
+  /* game over */
+  #gameover .go-title{font-size:64px; font-weight:900; color:#ff3d6e; text-shadow:0 4px 0 rgba(0,0,0,.3)}
+  #gameover .go-quip{margin-top:6px; font-size:18px; color:#9aa3b2; font-style:italic; letter-spacing:1px}
+  #gameover .go-stats{margin:22px 0; background:rgba(0,0,0,.35); border-radius:14px; padding:18px 40px; font-size:20px; line-height:2; min-width:300px}
+  #gameover .go-stats .v{float:right; font-weight:bold; margin-left:30px}
+
+  #toast{position:fixed; bottom:64px; left:50%; transform:translateX(-50%); z-index:15; pointer-events:none; display:flex; flex-direction:column; gap:6px; align-items:center}
+  .toast-msg{background:rgba(0,0,0,.6); border:2px solid rgba(255,255,255,.2); padding:8px 18px; border-radius:30px; font-weight:bold; font-size:15px; opacity:0; transform:translateY(10px); transition:all .25s}
+  .toast-msg.show{opacity:1; transform:translateY(0)}
+
+  #hint{position:fixed; bottom:6px; right:10px; font-size:12px; color:#566; z-index:12}
+</style>
+<script type="importmap">
+{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js" } }
+</script>
+</head>
+<body>
+<div id="game"></div>
+
+<!-- HUD -->
+<div id="hud" class="hidden">
+  <div id="xpbar" class="bar"><div class="fill"></div></div>
+  <div id="lvl">LV 1</div>
+  <div id="hpbar" class="bar"><div class="fill"></div><div class="label">100 / 100</div></div>
+  <div id="timer">00:00</div>
+  <div id="bossbar" class="bar hidden"><div class="fill"></div><div class="label">BOSS</div></div>
+  <div id="stats"><div class="kills">☠ 0</div><div class="gold">⬤ 0</div></div>
+  <div id="tray"></div>
+  <div id="dash" class="bar"><div class="fill"></div></div>
+</div>
+
+<div id="fx"></div>
+<div id="flash"></div>
+<div id="toast"></div>
+
+<!-- Start menu -->
+<div id="menu" class="overlay">
+  <div class="title">MEGABONK</div>
+  <div class="subtitle">three.js clone</div>
+  <div id="chars"></div>
+  <button id="play" class="btn">PLAY</button>
+  <div class="controls">
+    <b>WASD</b> / Arrows — move &nbsp;•&nbsp; <b>Mouse</b> — turn (click to capture) &nbsp;•&nbsp; <b>Q / E</b> — turn &nbsp;•&nbsp; <b>Space</b> — dash &nbsp;•&nbsp; <b>P</b> — pause<br>
+    Weapons fire automatically. Survive 10 minutes, grab XP gems, level up, get stronger.
+  </div>
+</div>
+
+<!-- Level up -->
+<div id="levelup" class="overlay hidden">
+  <div class="head">LEVEL UP!</div>
+  <div class="sub">Choose one — press 1 / 2 / 3</div>
+  <div id="cards"></div>
+</div>
+
+<!-- Pause -->
+<div id="pause" class="overlay hidden">
+  <div class="title" style="font-size:64px">PAUSED</div>
+  <button id="resume" class="btn">RESUME</button>
+  <button id="quit" class="btn alt">QUIT TO MENU</button>
+</div>
+
+<!-- Game over -->
+<div id="gameover" class="overlay hidden">
+  <div class="go-title" id="goTitle">YOU DIED</div>
+  <div class="go-quip" id="goQuip">skill issue</div>
+  <div class="go-stats" id="goStats"></div>
+  <button id="again" class="btn">PLAY AGAIN</button>
+</div>
+
+<div id="hint">v0.1</div>
+
+<script type="module" src="./game.js"></script>
+</body>
+</html>
