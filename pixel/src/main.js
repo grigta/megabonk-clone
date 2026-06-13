@@ -123,13 +123,15 @@
   function seedDecor() {
     var decor = MB.State.decor;
     decor.length = 0;
+    var p = MB.State.player;
+    var ox = p ? p.x : 0, oy = p ? p.y : 0;     // center on the hero's spawn
     var N = 48;
     for (var i = 0; i < N; i++) {
       var a = Math.random() * Math.PI * 2;
       var r = MB.rand(72, 780);                 // keep the spawn point clear
       decor.push({
-        x: Math.cos(a) * r,
-        y: Math.sin(a) * r,
+        x: ox + Math.cos(a) * r,
+        y: oy + Math.sin(a) * r,
         sprite: MB.pick(DECOR_SPRITES),
       });
     }
@@ -148,6 +150,14 @@
 
     // create the hero + their starting weapon, then author derived stats
     S.player = new MB.Player(charDef);
+    // spawn the hero somewhere new every run — random spot, so the starting
+    // biome and scenery differ each time (world/biomes/decor seed around this).
+    (function () {
+      var ang = Math.random() * Math.PI * 2;
+      var dist = MB.rand(500, 5200);
+      S.player.x = Math.round(Math.cos(ang) * dist);
+      S.player.y = Math.round(Math.sin(ang) * dist);
+    })();
     if (MB.Weapon && charDef && charDef.startWeapon) {
       S.player.weapons.push(new MB.Weapon(charDef.startWeapon));
     }
