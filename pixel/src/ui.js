@@ -260,14 +260,15 @@
     var sec = Math.floor(state.time);
     if (sec !== _c.timeSec) { _c.timeSec = sec; if (nodes.timer) nodes.timer.textContent = fmtTime(sec); }
 
-    // level
-    if (p.level !== _c.level) { _c.level = p.level; if (nodes.levelText) nodes.levelText.textContent = 'Lv ' + p.level; }
-
-    // xp bar
+    // xp bar fill
     var xp = (p.xpToNext > 0) ? (p.xp / p.xpToNext) : 0;
     xp = MB.clamp(xp, 0, 1);
     var xpw = Math.round(xp * 1000);
     if (xpw !== _c.xpW) { _c.xpW = xpw; if (nodes.xpFill) nodes.xpFill.style.width = (xpw / 10).toFixed(1) + '%'; }
+
+    // level + current/required XP, centered on the bar (e.g. "LV 5  ·  123 / 735")
+    var lvlStr = 'Lv ' + p.level + '  ·  ' + Math.floor(p.xp || 0) + ' / ' + (p.xpToNext || 0);
+    if (lvlStr !== _c.lvlStr) { _c.lvlStr = lvlStr; if (nodes.levelText) nodes.levelText.textContent = lvlStr; }
 
     // hp bar + number
     var hp = (p.maxHp > 0) ? (p.hp / p.maxHp) : 0;
