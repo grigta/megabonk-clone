@@ -129,6 +129,39 @@
   for (var di = 0; di < UPGRADES.length; di++) DEFS[UPGRADES[di].id] = UPGRADES[di];
 
   /* ------------------------------------------------------------------ *
+   * Concrete per-level effect of each upgrade (kept in lock-step with the
+   * apply() functions above) so each card shows exactly what it grants.
+   * ------------------------------------------------------------------ */
+  var EFFECTS = {
+    might:        { per: 6,   pct: true,  label: 'Damage' },
+    armor:        { per: 1,   pct: false, label: 'Armor' },
+    maxHp:        { per: 20,  pct: false, label: 'Max HP' },
+    speed:        { per: 4,   pct: true,  label: 'Move Speed' },
+    cooldownMult: { per: 4,   pct: true,  label: 'Attack Speed' },
+    amount:       { per: 1,   pct: false, label: 'Projectile' },
+    growth:       { per: 5,   pct: true,  label: 'XP Gain' },
+    magnet:       { per: 10,  pct: true,  label: 'Pickup Range' },
+    luck:         { per: 5,   pct: true,  label: 'Luck' },
+    greed:        { per: 8,   pct: true,  label: 'Gold' },
+    regen:        { per: 0.3, pct: false, label: 'HP/s Regen', dec: true },
+    revives:      { per: 1,   pct: false, label: 'Revive' },
+    area:         { per: 5,   pct: true,  label: 'Area' },
+    projSpeed:    { per: 6,   pct: true,  label: 'Proj. Speed' },
+    duration:     { per: 6,   pct: true,  label: 'Duration' },
+  };
+  function effectText(def, lvl) {
+    var e = EFFECTS[def.id];
+    if (!e) return '';
+    var u = e.pct ? '%' : '';
+    var per = (e.dec ? e.per.toFixed(1) : e.per) + u;
+    if (lvl > 0) {
+      var tot = e.dec ? (e.per * lvl).toFixed(1) : (e.per * lvl);
+      return 'Now +' + tot + u + ' ' + e.label + '  ·  +' + per + '/lvl';
+    }
+    return '+' + per + ' ' + e.label + ' per level';
+  }
+
+  /* ------------------------------------------------------------------ *
    * Persistence
    * ------------------------------------------------------------------ */
   var _data = null;     // { wallet:int, levels:{id:level} }
@@ -361,6 +394,8 @@
   '.mbshop-name{font-size:clamp(13px,1.5vw,16px);font-weight:700;letter-spacing:1px;' +
     'text-transform:uppercase;color:var(--bone,#e8e6d8);text-shadow:2px 2px 0 #000;}' +
   '.mbshop-desc{font-size:clamp(10px,1vw,12px);line-height:1.4;color:var(--bone-dim,#b9b6a6);min-height:2.6em;}' +
+  '.mbshop-effect{font-size:clamp(10px,1vw,12px);font-weight:700;line-height:1.35;color:var(--gold,#f2c14e);' +
+    'margin:3px 0 1px;text-shadow:1px 1px 0 #000;}' +
 
   '.mbshop-pips{display:flex;align-items:center;gap:3px;flex-wrap:wrap;margin:2px 0 1px;}' +
   '.mbshop-pip{width:9px;height:9px;border:1px solid #000;border-radius:1px;' +
@@ -513,6 +548,7 @@
     var body = el('div', 'mbshop-body');
     body.appendChild(el('div', 'mbshop-name', def.name || def.id));
     body.appendChild(el('div', 'mbshop-desc', def.desc || ''));
+    body.appendChild(el('div', 'mbshop-effect', effectText(def, lvl)));
 
     // level pips
     var pips = el('div', 'mbshop-pips');
