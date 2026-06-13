@@ -158,6 +158,7 @@
 
     seedDecor();
     if (MB.World && MB.World.startRun) { try { MB.World.startRun(S.player); } catch (e) {} }
+    if (MB.Biomes && MB.Biomes.startRun) { try { MB.Biomes.startRun(S.player); } catch (e) {} }
 
     _pending = 0;
     S.paused = false;
@@ -301,6 +302,7 @@
 
     // world structures / altars (may open an altar-choice → scene='altar')
     if (MB.World && MB.World.update) MB.World.update(dt, player);
+    if (MB.Biomes && MB.Biomes.update) MB.Biomes.update(dt, player);
 
     // recycle the dead
     MB.cull(enemies);
@@ -317,6 +319,8 @@
    * Rendering
    * ================================================================== */
   function drawGround(ctx) {
+    // biome system owns the ground when present (multiple textures per region)
+    if (MB.Biomes && MB.Biomes.drawGround) { MB.Biomes.drawGround(ctx); return; }
     var tile = (MB.Sprites && MB.Sprites.groundTile) ? MB.Sprites.groundTile() : null;
     if (!tile) return;
     var S = MB.State;
@@ -422,12 +426,14 @@
     drawGround(ctx);
 
     if (S.player) {
+      if (MB.Biomes && MB.Biomes.draw) MB.Biomes.draw(ctx);   // biome ground details (bones/mushrooms/etc)
       if (MB.World && MB.World.draw) MB.World.draw(ctx);   // graveyards/castles/altars under entities
       drawDecor(ctx);
       MB.drawGround_FX(ctx);     // gems + pickups (under entities)
       drawEntities(ctx);          // enemies + hero, Y-sorted
       drawProjectiles(ctx);       // weapon effects on top
       MB.drawOver_FX(ctx);        // particles + floating damage numbers
+      if (MB.Biomes && MB.Biomes.drawAmbient) MB.Biomes.drawAmbient(ctx);  // fog/embers/snow + biome tint
       drawLowHpVignette(ctx);     // danger pulse
     }
 
