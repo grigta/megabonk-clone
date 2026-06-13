@@ -133,10 +133,11 @@
   // ---- difficulty tuning: time term + power term, each blended in ----
   const POWER_REF       = 100;   // playerPower that counts as "fully powered" (~term 1.0)
 
-  const HP_PER_MIN      = 0.42;  // hp-mul gained per run-minute
+  const HP_PER_MIN      = 0.60;  // hp-mul gained per run-minute (linear time term)
+  const HP_PER_MIN2     = 0.022; // hp-mul gained per minute^2 (ACCELERATING — late game gets tanky)
   const HP_PER_POWER    = 4.4;   // hp-mul gained per unit of power-term
   const HP_SYNERGY      = 0.05;  // extra hp when BOTH time AND power are high (rubber-band)
-  const HP_MUL_CAP      = 16;    // absolute ceiling
+  const HP_MUL_CAP      = 28;    // absolute ceiling
 
   const DMG_PER_MIN     = 0.085;
   const DMG_PER_POWER   = 0.72;
@@ -153,7 +154,7 @@
   // Bosses: hp may scale fully, but speed/dmg inflation is capped (stay fair).
   const BOSS_DMG_CAP    = 2.2;
   const BOSS_SPEED_CAP  = 1.15;
-  const BOSS_HP_MUL_CAP = 16;
+  const BOSS_HP_MUL_CAP = 28;
 
   // Cached per-frame so a whole spawn-batch shares one cheap computation.
   let _diffFrame = -1;
@@ -170,7 +171,8 @@
     const power = playerPower(player || (S && S.player));
     const pt = power / POWER_REF;
 
-    let hp = 1 + minute * HP_PER_MIN + pt * HP_PER_POWER + minute * pt * HP_SYNERGY;
+    let hp = 1 + minute * HP_PER_MIN + minute * minute * HP_PER_MIN2
+              + pt * HP_PER_POWER + minute * pt * HP_SYNERGY;
     if (hp > HP_MUL_CAP) hp = HP_MUL_CAP;
     let dmg = 1 + minute * DMG_PER_MIN + pt * DMG_PER_POWER;
     if (dmg > DMG_MUL_CAP) dmg = DMG_MUL_CAP;
