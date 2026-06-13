@@ -1,0 +1,8 @@
+{
+  "cleanUrls": true,
+  "rewrites": [
+    { "source": "/", "destination": "/pixel/index.html" },
+    { "source": "/styles.css", "destination": "/pixel/styles.css" },
+    { "source": "/src/:path*", "destination": "/pixel/src/:path*" }
+  ]
+}

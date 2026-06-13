@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+<title>MEGABONK: PIXEL CRYPT</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <div id="ui-root">
+    <!-- In-run HUD -->
+    <div id="hud" class="hidden">
+      <div id="hud-top">
+        <div id="timer">00:00</div>
+        <div id="hud-stats">
+          <span id="kills">☠ 0</span>
+          <span id="gold">⊙ 0</span>
+        </div>
+      </div>
+      <div id="xp-bar"><div id="xp-fill"></div><span id="level-text">Lv 1</span></div>
+      <div id="hud-bottom">
+        <div id="hp-bar"><div id="hp-fill"></div><span id="hp-text">100/100</span></div>
+        <div id="loadout">
+          <div id="weapon-icons"></div>
+          <div id="passive-icons"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Full screen panels -->
+    <div id="start-screen" class="panel"></div>
+    <div id="levelup-screen" class="panel hidden"></div>
+    <div id="gameover-screen" class="panel hidden"></div>
+    <div id="toast" class="hidden"></div>
+    <div id="pause-hint" class="hidden">PAUSED — press P</div>
+  </div>
+
+  <!-- Load order matters: core first, main last -->
+  <script src="src/core.js"></script>
+  <script src="src/sprites.js"></script>
+  <script src="src/audio.js"></script>
+  <script src="src/player.js"></script>
+  <script src="src/weapons.js"></script>
+  <script src="src/enemies.js"></script>
+  <script src="src/upgrades.js"></script>
+  <script src="src/shop.js"></script>
+  <script src="src/world.js"></script>
+  <script src="src/ui.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
