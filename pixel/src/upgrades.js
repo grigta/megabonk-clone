@@ -174,7 +174,7 @@
   function xpForLevel(level) {
     level = (level | 0); if (level < 1) level = 1;
     var n = level - 1;
-    var xp = 5 + n * 8 + n * n * 1.6;   // linear (brisk early) + quadratic (grindy late)
+    var xp = 5 + n * 6 + n * n * 1.0;   // linear (brisk early) + quadratic (grindy late)
     xp = Math.round(xp);
     return xp < 1 ? 1 : xp;
   }

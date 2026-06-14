@@ -133,11 +133,11 @@
   // ---- difficulty tuning: time term + power term, each blended in ----
   const POWER_REF       = 100;   // playerPower that counts as "fully powered" (~term 1.0)
 
-  const HP_PER_MIN      = 0.60;  // hp-mul gained per run-minute (linear time term)
-  const HP_PER_MIN2     = 0.022; // hp-mul gained per minute^2 (ACCELERATING — late game gets tanky)
+  const HP_PER_MIN      = 0.42;  // hp-mul gained per run-minute (linear time term)
+  const HP_PER_MIN2     = 0.013; // hp-mul gained per minute^2 (ACCELERATING — late game gets tanky)
   const HP_PER_POWER    = 4.4;   // hp-mul gained per unit of power-term
   const HP_SYNERGY      = 0.05;  // extra hp when BOTH time AND power are high (rubber-band)
-  const HP_MUL_CAP      = 28;    // absolute ceiling
+  const HP_MUL_CAP      = 22;    // absolute ceiling
 
   const DMG_PER_MIN     = 0.085;
   const DMG_PER_POWER   = 0.72;
@@ -154,7 +154,7 @@
   // Bosses: hp may scale fully, but speed/dmg inflation is capped (stay fair).
   const BOSS_DMG_CAP    = 2.2;
   const BOSS_SPEED_CAP  = 1.15;
-  const BOSS_HP_MUL_CAP = 28;
+  const BOSS_HP_MUL_CAP = 22;
 
   // Cached per-frame so a whole spawn-batch shares one cheap computation.
   let _diffFrame = -1;
@@ -445,10 +445,10 @@
     } else {
       // luck-scaled trickle of bonus drops
       const r = Math.random();
-      if (r < 0.010 * luck) MB.spawnPickup(this.x, this.y, 'heart');
-      else if (r < 0.024 * luck) MB.spawnPickup(this.x, this.y, 'coin');
-      else if (r < 0.030 * luck) MB.spawnPickup(this.x, this.y, 'magnet');
-      else if (r < 0.0325 * luck) MB.spawnPickup(this.x, this.y, 'chest');
+      if (r < 0.012 * luck) MB.spawnPickup(this.x, this.y, 'heart');
+      else if (r < 0.030 * luck) MB.spawnPickup(this.x, this.y, 'coin');
+      else if (r < 0.042 * luck) MB.spawnPickup(this.x, this.y, 'magnet');
+      else if (r < 0.052 * luck) MB.spawnPickup(this.x, this.y, 'chest');   // ~1% chest → evolutions become reachable
       if (MB.Audio && MB.Audio.sfx) MB.Audio.sfx('death');
     }
   };
@@ -682,7 +682,7 @@
     let live = S.enemies.length;
 
     // ---- continuous trickle, escalating with time AND adaptive spawnMul ----
-    const rate = MB.lerp(3, 40, MB.clamp(minute / 8, 0, 1)) * (1 + minute * 0.18) * diff.spawnMul;
+    const rate = MB.lerp(1.3, 24, MB.clamp(minute / 11, 0, 1)) * (1 + minute * 0.09) * diff.spawnMul;
     _director.spawnAcc += dt * rate;
     let budget = _director.spawnAcc | 0;
     if (budget > 0) {

@@ -29,7 +29,7 @@
     growth: 1,        // XP gain multiplier
     luck: 1,          // drop / 4th-option luck
     armor: 0,         // flat damage reduction per hit
-    regen: 0.4,       // hp per second (gentle baseline recovery)
+    regen: 0.7,       // hp per second (gentle baseline recovery)
     greed: 1,         // gold multiplier
     revives: 0,       // extra lives
     maxHp: 100        // max health
@@ -220,7 +220,7 @@
 
     var dmg = Math.max(1, (n || 0) - this.armor);
     this.hp -= dmg;
-    this.iframes = 0.78;
+    this.iframes = 0.92;
 
     if (MB.Audio && MB.Audio.sfx) MB.Audio.sfx('hurt');
     MB.spawnParticles(this.x, this.y, '#b5202a', 12, { speed: 130, life: 0.5, size: 2, gravity: 80 });

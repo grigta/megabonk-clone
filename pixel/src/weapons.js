@@ -61,12 +61,16 @@
   /* =================================================================== *
    *  STAT SCALING  —  statsAt(def, level, player)
    * =================================================================== */
+  var DMG_GLOBAL = 1.45;   // global weapon-damage tuning — lifts kill-rate so the
+                           // early snowball actually starts (late game stays gated
+                           // by enemy HP-scaling + boss HP caps).
+
   function statsAt(def, level, player) {
     var b = def.base;
     var gn = def.gain || {};
     var L = level - 1;                       // levels gained beyond 1
 
-    var damage   = b.damage   * (1 + (gn.damage   != null ? gn.damage   : 0.20) * L);
+    var damage   = b.damage   * (1 + (gn.damage   != null ? gn.damage   : 0.20) * L) * DMG_GLOBAL;
     var cooldown = b.cooldown * Math.pow((gn.cooldown != null ? gn.cooldown : 0.94), L);
     var area     = b.area     * (1 + (gn.area     != null ? gn.area     : 0.05) * L);
     var speed    = b.speed    * (1 + (gn.speed    != null ? gn.speed    : 0.02) * L);
@@ -775,7 +779,7 @@
     knife: {
       id: 'knife', name: 'Throwing Knife', icon: 'icon_knife', kind: 'projectile', maxLevel: 8,
       desc: 'Hurls fast piercing knives in the way you face.',
-      base: { damage: 8, cooldown: 0.7, count: 1, area: 1, speed: 330, pierce: 1, duration: 1.0, knockback: 3 },
+      base: { damage: 12, cooldown: 0.7, count: 2, area: 1, speed: 330, pierce: 1, duration: 1.0, knockback: 3 },
       gain: { damage: 0.2, cooldown: 0.93, speed: 0.05, count: [2, 4, 6, 8], pierce: [5] },
       spread: 0.1, hitR: 9,
       evolvesTo: 'thousandknives', evolvePassive: 'bracer',
@@ -918,13 +922,25 @@
       var w = player.weapons[i];
       var def = w.def;
       if (!def || !def.evolvesTo) continue;
-      if (w.level < def.maxLevel) continue;
-      if (!passiveMaxed(player, def.evolvePassive)) continue;
+      // weapon need only be well-grown (lvl 6), not fully maxed (8) — so the
+      // evolution power-spike is reachable mid-run instead of only by the rare
+      // long survivor.
+      if (w.level < Math.min(6, def.maxLevel)) continue;
+      // evolution catalyst: just OWN the passive (level >= 1), not maxed — keeps
+      // evolutions reachable within a real run rather than gating them behind a
+      // fully-maxed passive nobody lives long enough to build.
+      if (def.evolvePassive) {
+        var _pl = (player.passives && player.passives[def.evolvePassive]) || 0;
+        if (_pl < 1) continue;
+      }
 
-      // perform evolution
+      // perform evolution — the evolved weapon starts already-grown (lvl 5) so
+      // it is a clear power SPIKE over the lvl-6 base it replaces (never a
+      // temporary downgrade that gets you killed).
       if (w.dispose) w.dispose();
       var evo = new MB.Weapon(def.evolvesTo);
       evo.evolved = true;
+      evo.level = Math.min(5, (evo.def && evo.def.maxLevel) || 8);
       player.weapons[i] = evo;
 
       if (MB.Audio && MB.Audio.sfx) MB.Audio.sfx('evolve');
