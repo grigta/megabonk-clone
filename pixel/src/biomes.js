@@ -123,18 +123,54 @@
   }
 
   /* ================================================================== *
-   * biomeAt — coarse value-region biome with a cohesive graveyard origin
+   * Smooth value noise (deterministic, allocation-free) — used to warp the
+   * biome lattice so regions are organic blobs, not axis-aligned rectangles.
+   * ================================================================== */
+  function fade(t) { return t * t * (3 - 2 * t); }
+  function h01(ix, iy, s) { return (hash(ix, iy, s) & 0xffff) / 65536; }
+  function vnoise(x, y, s) {
+    var xi = Math.floor(x), yi = Math.floor(y);
+    var xf = x - xi, yf = y - yi;
+    var u = fade(xf), v = fade(yf);
+    var n00 = h01(xi, yi, s), n10 = h01(xi + 1, yi, s);
+    var n01 = h01(xi, yi + 1, s), n11 = h01(xi + 1, yi + 1, s);
+    var nx0 = n00 + (n10 - n00) * u;
+    var nx1 = n01 + (n11 - n01) * u;
+    return nx0 + (nx1 - nx0) * v;        // [0,1)
+  }
+
+  /* ================================================================== *
+   * biomeAt — value-region biome with a cohesive graveyard origin, but the
+   * sample point is DOMAIN-WARPED by low-frequency noise so the borders
+   * between biomes are wavy/organic instead of straight rectangle edges.
    *  - 3300px super-regions give large, walk-through swaths
    *  - ~22% of 1100px cells become a different "pocket" for organic variety
    * ================================================================== */
+  var WARP_F = 0.00125;     // warp frequency (~1 cycle / 800px)
+  var WARP_A = 560;         // warp amplitude (px) — ~half a region
   function biomeAt(wx, wy) {
     if (wx * wx + wy * wy < SAFE2) return 'graveyard';
-    var rx = Math.floor(wx / REGION), ry = Math.floor(wy / REGION);
+    // push the sample point around with smooth noise → organic region shapes
+    var ax = (vnoise(wx * WARP_F, wy * WARP_F, 101) - 0.5) * 2 * WARP_A;
+    var ay = (vnoise(wx * WARP_F + 5.2, wy * WARP_F + 1.7, 202) - 0.5) * 2 * WARP_A;
+    var nx = wx + ax, ny = wy + ay;
+    var rx = Math.floor(nx / REGION), ry = Math.floor(ny / REGION);
     if ((hash(rx, ry, 7) & 255) < 56) {
       return BIOMES[hash(rx, ry, 19) % 6];
     }
-    var sx = Math.floor(wx / SUPER), sy = Math.floor(wy / SUPER);
+    var sx = Math.floor(nx / SUPER), sy = Math.floor(ny / SUPER);
     return BIOMES[hash(sx, sy, 3) % 6];
+  }
+
+  /* biomeGround — what the GROUND renderer samples: biomeAt plus a short
+   * high-frequency jitter so the seam between two biomes BLEEDS across a few
+   * tiles (a dithered transition band) instead of one hard line. */
+  var BLEED_F = 0.010;      // jitter frequency (~1 cycle / 100px) — per-tile variation
+  var BLEED_A = 132;        // jitter amplitude (px) → ~4 tile interlaced bleed band
+  function biomeGround(wx, wy) {
+    var jx = wx + (vnoise(wx * BLEED_F, wy * BLEED_F, 303) - 0.5) * 2 * BLEED_A;
+    var jy = wy + (vnoise(wx * BLEED_F + 3.3, wy * BLEED_F + 9.1, 404) - 0.5) * 2 * BLEED_A;
+    return biomeAt(jx, jy);
   }
 
   /* ================================================================== *
@@ -429,7 +465,7 @@
 
       for (var ty = sY - tw; ty <= wb + tw; ty += tw) {
         for (var tx = sX - tw; tx <= wr + tw; tx += tw) {
-          var b = biomeAt(tx + 16, ty + 16);
+          var b = biomeGround(tx + 16, ty + 16);
           var v = hash(tx / tw, ty / tw, 11) % 3;
           var tile = hasG ? MB.Sprites.groundTile(b, v) : null;
           var p = MB.cam.worldToScreen(tx, ty);
@@ -439,9 +475,9 @@
           else { ctx.fillStyle = '#221d2b'; ctx.fillRect(dx, dy, tp + 1, tp + 1); }
 
           // subtle 1px-stipple transition where neighbours change biome
-          var br = biomeAt(tx + tw + 16, ty + 16);
+          var br = biomeGround(tx + tw + 16, ty + 16);
           if (br !== b) edgeDither(ctx, dx + tp, dy, tp, true, br);
-          var bb = biomeAt(tx + 16, ty + tw + 16);
+          var bb = biomeGround(tx + 16, ty + tw + 16);
           if (bb !== b) edgeDither(ctx, dx, dy + tp, tp, false, bb);
         }
       }
