@@ -66,7 +66,7 @@
   // late-game power spike (which the enemy HP rubber-band is meant to govern).
   function earlyDmgBoost() {
     var t = (MB.State && MB.State.time) || 0;
-    return 1 + 0.45 * (1 - Math.min(t / 540, 1));
+    return 1 + 0.55 * (1 - Math.min(t / 540, 1));   // peak +55% (offsets the 4-weapon cap), → 1.0 by 9min
   }
 
   function statsAt(def, level, player) {

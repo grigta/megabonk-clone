@@ -9,6 +9,15 @@
 (function (MB) {
   'use strict';
 
+  // Build-specialisation slots: a hero may hold at most this many weapons and
+  // passives. Once a category is full, level-ups only offer UPGRADES to the
+  // items already chosen — forcing committed, varied builds instead of grabbing
+  // everything at once.
+  var MAX_WEAPONS = 4;
+  var MAX_PASSIVES = 4;
+  MB.MAX_WEAPONS = MAX_WEAPONS;
+  MB.MAX_PASSIVES = MAX_PASSIVES;
+
   /* ------------------------------------------------------------------ *
    * Canonical fallback baseline (player.js owns the real one). Used only
    * if recompute is called before player.js loads — never throws.
@@ -300,7 +309,7 @@
     }
 
     // New weapons (base only) if there's a free weapon slot (<6).
-    if (owned.length < 6) {
+    if (owned.length < MAX_WEAPONS) {
       for (var nid in defs) {
         if (!Object.prototype.hasOwnProperty.call(defs, nid)) continue;
         if (ownedIds[nid] || evoTargets[nid]) continue;
@@ -336,7 +345,7 @@
     }
 
     // New passives if there's a free passive slot (<6).
-    if (passCount < 6) {
+    if (passCount < MAX_PASSIVES) {
       for (var apid in PASSIVE_DEFS) {
         if (!Object.prototype.hasOwnProperty.call(PASSIVE_DEFS, apid)) continue;
         if (pass[apid] !== undefined) continue;
