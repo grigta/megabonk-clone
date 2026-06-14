@@ -61,16 +61,20 @@
   /* =================================================================== *
    *  STAT SCALING  —  statsAt(def, level, player)
    * =================================================================== */
-  var DMG_GLOBAL = 1.45;   // global weapon-damage tuning — lifts kill-rate so the
-                           // early snowball actually starts (late game stays gated
-                           // by enemy HP-scaling + boss HP caps).
+  // Early-game damage help that DECAYS to 1.0 by ~9 min — it breaks the low-DPS
+  // death-spiral while the build is weak, then fades so it never inflates the
+  // late-game power spike (which the enemy HP rubber-band is meant to govern).
+  function earlyDmgBoost() {
+    var t = (MB.State && MB.State.time) || 0;
+    return 1 + 0.45 * (1 - Math.min(t / 540, 1));
+  }
 
   function statsAt(def, level, player) {
     var b = def.base;
     var gn = def.gain || {};
     var L = level - 1;                       // levels gained beyond 1
 
-    var damage   = b.damage   * (1 + (gn.damage   != null ? gn.damage   : 0.20) * L) * DMG_GLOBAL;
+    var damage   = b.damage   * (1 + (gn.damage   != null ? gn.damage   : 0.20) * L) * earlyDmgBoost();
     var cooldown = b.cooldown * Math.pow((gn.cooldown != null ? gn.cooldown : 0.94), L);
     var area     = b.area     * (1 + (gn.area     != null ? gn.area     : 0.05) * L);
     var speed    = b.speed    * (1 + (gn.speed    != null ? gn.speed    : 0.02) * L);

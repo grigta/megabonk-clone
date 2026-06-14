@@ -108,16 +108,18 @@
   const P_HP           = 8;     // per +100 maxHp
   const P_COOLDOWN     = 26;    // per 1.00 of cooldown reduction
   const P_AMOUNT       = 4.5;   // per extra projectile
+  const P_EVOLVED      = 9;     // per evolved weapon — evolutions are a big DPS jump (so they
+                                // also push the rubber-band, keeping a god-build challenged)
 
   // playerPower ≈ 0 at run start, growing as the build snowballs.
   function playerPower(player) {
     if (!player) return 0;
     const lvl = (player.level || 1) - 1;
     const ws = player.weapons;
-    let wPow = 0, wCount = 0;
+    let wPow = 0, wCount = 0, evo = 0;
     if (ws) {
       wCount = ws.length;
-      for (let i = 0; i < ws.length; i++) { const w = ws[i]; if (w) wPow += (w.level || 1) - 1; }
+      for (let i = 0; i < ws.length; i++) { const w = ws[i]; if (w) { wPow += (w.level || 1) - 1; if (w.evolved || (w.def && w.def.isEvolved)) evo++; } }
     }
     const extraWeapons = wCount > 1 ? wCount - 1 : 0;
     const might  = (player.might || 1) - 1;
@@ -126,22 +128,28 @@
     const cd     = 1 - (player.cooldownMult || 1);   // faster cooldown => positive
     const amount = player.amount || 0;
     const p = lvl * P_LEVEL + wPow * P_WEAPON_LEVEL + extraWeapons * P_WEAPON_COUNT
-            + might * P_MIGHT + area * P_AREA + hp * P_HP + cd * P_COOLDOWN + amount * P_AMOUNT;
+            + might * P_MIGHT + area * P_AREA + hp * P_HP + cd * P_COOLDOWN + amount * P_AMOUNT
+            + evo * P_EVOLVED;
     return p > 0 ? p : 0;
   }
 
   // ---- difficulty tuning: time term + power term, each blended in ----
   const POWER_REF       = 100;   // playerPower that counts as "fully powered" (~term 1.0)
 
-  const HP_PER_MIN      = 0.42;  // hp-mul gained per run-minute (linear time term)
-  const HP_PER_MIN2     = 0.013; // hp-mul gained per minute^2 (ACCELERATING — late game gets tanky)
-  const HP_PER_POWER    = 4.4;   // hp-mul gained per unit of power-term
-  const HP_SYNERGY      = 0.05;  // extra hp when BOTH time AND power are high (rubber-band)
-  const HP_MUL_CAP      = 22;    // absolute ceiling
+  const HP_PER_MIN      = 0.42;  // hp-mul gained per run-minute (gentle time term — keeps the
+                                 // mid-game survivable for an average build)
+  const HP_PER_MIN2     = 0.014; // hp-mul per minute^2 (mild late-time acceleration)
+  const HP_PER_POWER    = 4.4;   // hp-mul per unit of power-term (LINEAR rubber-band)
+  const HP_POWER2       = 2.2;   // hp-mul per power-term^2 — this is what GOVERNS the late power
+                                 // spike: it is ~0 while you're weak (so the mid-game snowball &
+                                 // evolutions feel great), but as a god-build's power climbs it
+                                 // scales enemy HP super-linearly so you never become invincible.
+  const HP_SYNERGY      = 0.06;  // extra hp when BOTH time AND power are high
+  const HP_MUL_CAP      = 44;    // absolute ceiling
 
   const DMG_PER_MIN     = 0.085;
-  const DMG_PER_POWER   = 0.72;
-  const DMG_MUL_CAP     = 3.6;
+  const DMG_PER_POWER   = 0.80;  // strong builds face harder-hitting enemies (glass-cannon tension)
+  const DMG_MUL_CAP     = 3.8;
 
   const SPEED_PER_MIN   = 0.014;
   const SPEED_PER_POWER = 0.10;
@@ -154,7 +162,7 @@
   // Bosses: hp may scale fully, but speed/dmg inflation is capped (stay fair).
   const BOSS_DMG_CAP    = 2.2;
   const BOSS_SPEED_CAP  = 1.15;
-  const BOSS_HP_MUL_CAP = 22;
+  const BOSS_HP_MUL_CAP = 44;
 
   // Cached per-frame so a whole spawn-batch shares one cheap computation.
   let _diffFrame = -1;
@@ -172,7 +180,7 @@
     const pt = power / POWER_REF;
 
     let hp = 1 + minute * HP_PER_MIN + minute * minute * HP_PER_MIN2
-              + pt * HP_PER_POWER + minute * pt * HP_SYNERGY;
+              + pt * HP_PER_POWER + pt * pt * HP_POWER2 + minute * pt * HP_SYNERGY;
     if (hp > HP_MUL_CAP) hp = HP_MUL_CAP;
     let dmg = 1 + minute * DMG_PER_MIN + pt * DMG_PER_POWER;
     if (dmg > DMG_MUL_CAP) dmg = DMG_MUL_CAP;
@@ -439,7 +447,10 @@
       }
     } else if (this.elite) {
       MB.spawnPickup(this.x, this.y, 'coin');
-      if (MB.chance(0.35 * luck)) MB.spawnPickup(this.x + 6, this.y, 'chest');
+      if (MB.chance(0.35 * luck) && ((MB.State && MB.State.time) || 0) - _director.lastChest > 18) {
+        _director.lastChest = (MB.State && MB.State.time) || 0;
+        MB.spawnPickup(this.x + 6, this.y, 'chest');
+      }
       MB.shake(5);
       if (MB.Audio && MB.Audio.sfx) MB.Audio.sfx('death');
     } else {
@@ -448,7 +459,14 @@
       if (r < 0.012 * luck) MB.spawnPickup(this.x, this.y, 'heart');
       else if (r < 0.030 * luck) MB.spawnPickup(this.x, this.y, 'coin');
       else if (r < 0.042 * luck) MB.spawnPickup(this.x, this.y, 'magnet');
-      else if (r < 0.052 * luck) MB.spawnPickup(this.x, this.y, 'chest');   // ~1% chest → evolutions become reachable
+      else if (r < 0.052 * luck) {
+        // chest drop is COOLDOWN-gated so the late game (thousands of kills) is
+        // never flooded with chests — at most one trickle-chest every ~26s.
+        if (((MB.State && MB.State.time) || 0) - _director.lastChest > 26) {
+          _director.lastChest = (MB.State && MB.State.time) || 0;
+          MB.spawnPickup(this.x, this.y, 'chest');
+        }
+      }
       if (MB.Audio && MB.Audio.sfx) MB.Audio.sfx('death');
     }
   };
@@ -601,6 +619,7 @@
     _director.bossIdx = 0;            // reset escalating boss schedule
     _director.reaperSpawned = false;
     _director.reaperDead = false;
+    _director.lastChest = -999;       // chest-drop cooldown clock (anti late-game spam)
     _diffFrame = -1;                  // force a fresh difficulty calc next frame
   };
 
